@@ -13,6 +13,7 @@ import {
   SheetTitle
 } from '@/components/ui/sheet'
 import { useConnectionStore } from '@/stores'
+import type { DatabaseType } from '@shared/index'
 
 interface AddConnectionDialogProps {
   open: boolean
@@ -21,7 +22,22 @@ interface AddConnectionDialogProps {
 
 type InputMode = 'manual' | 'connection-string'
 
-function parseConnectionString(connectionString: string): {
+const DB_DEFAULTS: Record<DatabaseType, { port: string; user: string; database: string }> = {
+  postgresql: { port: '5432', user: 'postgres', database: 'postgres' },
+  mysql: { port: '3306', user: 'root', database: '' },
+  sqlite: { port: '', user: '', database: '' }
+}
+
+const DB_PROTOCOLS: Record<DatabaseType, string[]> = {
+  postgresql: ['postgres', 'postgresql'],
+  mysql: ['mysql'],
+  sqlite: []
+}
+
+function parseConnectionString(
+  connectionString: string,
+  dbType: DatabaseType
+): {
   host: string
   port: string
   database: string
@@ -30,17 +46,20 @@ function parseConnectionString(connectionString: string): {
   ssl: boolean
 } | null {
   try {
-    // Handle postgresql:// or postgres:// URLs
     const url = new URL(connectionString)
+    const protocol = url.protocol.replace(':', '')
 
-    if (!url.protocol.startsWith('postgres')) {
+    // Validate protocol matches db type
+    const validProtocols = DB_PROTOCOLS[dbType]
+    if (!validProtocols.some((p) => protocol.startsWith(p))) {
       return null
     }
 
+    const defaults = DB_DEFAULTS[dbType]
     const host = url.hostname || 'localhost'
-    const port = url.port || '5432'
-    const database = url.pathname.replace(/^\//, '') || 'postgres'
-    const user = url.username || 'postgres'
+    const port = url.port || defaults.port
+    const database = url.pathname.replace(/^\//, '') || defaults.database
+    const user = url.username || defaults.user
     const password = decodeURIComponent(url.password || '')
 
     // Check for SSL in query params
@@ -56,6 +75,7 @@ function parseConnectionString(connectionString: string): {
 export function AddConnectionDialog({ open, onOpenChange }: AddConnectionDialogProps) {
   const addConnection = useConnectionStore((s) => s.addConnection)
 
+  const [dbType, setDbType] = useState<DatabaseType>('postgresql')
   const [inputMode, setInputMode] = useState<InputMode>('manual')
   const [connectionString, setConnectionString] = useState('')
   const [parseError, setParseError] = useState<string | null>(null)
@@ -73,6 +93,21 @@ export function AddConnectionDialog({ open, onOpenChange }: AddConnectionDialogP
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null)
   const [testError, setTestError] = useState<string | null>(null)
 
+  const handleDbTypeChange = (newType: DatabaseType) => {
+    setDbType(newType)
+    const defaults = DB_DEFAULTS[newType]
+    setPort(defaults.port)
+    setUser(defaults.user)
+    if (defaults.database) {
+      setDatabase(defaults.database)
+    }
+    // Clear connection string when switching types
+    setConnectionString('')
+    setParseError(null)
+    setTestResult(null)
+    setTestError(null)
+  }
+
   const handleConnectionStringChange = (value: string) => {
     setConnectionString(value)
     setParseError(null)
@@ -81,7 +116,7 @@ export function AddConnectionDialog({ open, onOpenChange }: AddConnectionDialogP
       return
     }
 
-    const parsed = parseConnectionString(value)
+    const parsed = parseConnectionString(value, dbType)
     if (parsed) {
       setHost(parsed.host)
       setPort(parsed.port)
@@ -90,11 +125,16 @@ export function AddConnectionDialog({ open, onOpenChange }: AddConnectionDialogP
       setPassword(parsed.password)
       setSsl(parsed.ssl)
     } else {
-      setParseError('Invalid connection string format')
+      const expectedFormat =
+        dbType === 'mysql'
+          ? 'mysql://user:password@host:3306/database'
+          : 'postgresql://user:password@host:5432/database'
+      setParseError(`Invalid connection string format. Expected: ${expectedFormat}`)
     }
   }
 
   const resetForm = () => {
+    setDbType('postgresql')
     setInputMode('manual')
     setConnectionString('')
     setParseError(null)
@@ -122,7 +162,8 @@ export function AddConnectionDialog({ open, onOpenChange }: AddConnectionDialogP
     database,
     user,
     password: password || undefined,
-    ssl
+    ssl,
+    dbType
   })
 
   const handleTestConnection = async () => {
@@ -187,12 +228,40 @@ export function AddConnectionDialog({ open, onOpenChange }: AddConnectionDialogP
             Add Connection
           </SheetTitle>
           <SheetDescription>
-            Add a new PostgreSQL database connection. Your credentials are stored securely on your
-            device.
+            Add a new database connection. Your credentials are stored securely on your device.
           </SheetDescription>
         </SheetHeader>
 
         <div className="flex flex-col gap-4 py-4 px-4">
+          {/* Database Type Selector */}
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium">Database Type</label>
+            <div className="flex rounded-lg border bg-muted p-1">
+              <button
+                type="button"
+                onClick={() => handleDbTypeChange('postgresql')}
+                className={`flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                  dbType === 'postgresql'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                PostgreSQL
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDbTypeChange('mysql')}
+                className={`flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                  dbType === 'mysql'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                MySQL
+              </button>
+            </div>
+          </div>
+
           {/* Input Mode Toggle */}
           <div className="flex rounded-lg border bg-muted p-1">
             <button
@@ -243,13 +312,20 @@ export function AddConnectionDialog({ open, onOpenChange }: AddConnectionDialogP
               </label>
               <Input
                 id="connection-string"
-                placeholder="postgresql://user:password@host:5432/database"
+                placeholder={
+                  dbType === 'mysql'
+                    ? 'mysql://user:password@host:3306/database'
+                    : 'postgresql://user:password@host:5432/database'
+                }
                 value={connectionString}
                 onChange={(e) => handleConnectionStringChange(e.target.value)}
                 className="font-mono text-sm"
               />
               <p className="text-xs text-muted-foreground">
-                Format: postgresql://user:password@host:port/database
+                Format:{' '}
+                {dbType === 'mysql'
+                  ? 'mysql://user:password@host:port/database'
+                  : 'postgresql://user:password@host:port/database'}
               </p>
               {parseError && <p className="text-xs text-destructive">{parseError}</p>}
               {connectionString && !parseError && (

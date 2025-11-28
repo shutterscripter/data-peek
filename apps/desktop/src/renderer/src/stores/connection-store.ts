@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { ConnectionConfig, SchemaInfo, TableInfo, ColumnInfo } from '@shared/index'
+import { ConnectionConfig, SchemaInfo, TableInfo, ColumnInfo, DatabaseType } from '@shared/index'
 
 export interface Connection {
   id: string
@@ -11,6 +11,7 @@ export interface Connection {
   password?: string
   ssl?: boolean
   group?: string
+  dbType: DatabaseType
 }
 
 export interface ConnectionWithStatus extends Connection {
@@ -59,6 +60,8 @@ interface ConnectionState {
 // Helper to convert ConnectionConfig to ConnectionWithStatus
 const toConnectionWithStatus = (config: ConnectionConfig): ConnectionWithStatus => ({
   ...config,
+  // Default to postgresql for backward compatibility with existing connections
+  dbType: config.dbType || 'postgresql',
   isConnected: false,
   isConnecting: false
 })
