@@ -36,11 +36,19 @@ jobs:
         run: pnpm install
 
       - name: Build for ${{ matrix.platform }}
-        run: pnpm build:${{ matrix.platform }}
+        working-directory: apps/desktop
+        run: |
+          pnpm exec electron-vite build
+          pnpm exec electron-builder --${{ matrix.platform }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build additional Linux packages
         if: matrix.platform == 'linux'
-        run: pnpm --filter @data-peek/desktop exec electron-builder --linux deb
+        working-directory: apps/desktop
+        run: pnpm exec electron-builder --linux deb
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
