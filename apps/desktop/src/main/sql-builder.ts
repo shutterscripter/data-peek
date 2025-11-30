@@ -12,6 +12,7 @@ import type {
   ParameterizedQuery,
   DatabaseType
 } from '@data-peek/shared'
+import { quoteIdentifier as quoteIdentifierUtil } from './sql-utils'
 
 /**
  * SQL dialect configuration
@@ -40,6 +41,11 @@ const DIALECTS: Record<DatabaseType, SqlDialect> = {
     parameterPlaceholder: () => '?',
     identifierQuote: '"',
     supportsReturning: true // SQLite 3.35+
+  },
+  mssql: {
+    parameterPlaceholder: (i) => `@p${i}`,
+    identifierQuote: '[',
+    supportsReturning: false // MSSQL uses OUTPUT clause instead
   }
 }
 
@@ -47,10 +53,7 @@ const DIALECTS: Record<DatabaseType, SqlDialect> = {
  * Quote an identifier (table name, column name) for the given dialect
  */
 function quoteIdentifier(name: string, dialect: SqlDialect): string {
-  const q = dialect.identifierQuote
-  // Escape any existing quote characters
-  const escaped = name.replace(new RegExp(q, 'g'), q + q)
-  return `${q}${escaped}${q}`
+  return quoteIdentifierUtil(name, dialect.identifierQuote)
 }
 
 /**
@@ -58,8 +61,13 @@ function quoteIdentifier(name: string, dialect: SqlDialect): string {
  */
 function buildTableRef(context: EditContext, dialect: SqlDialect): string {
   const table = quoteIdentifier(context.table, dialect)
-  // PostgreSQL uses schema.table, MySQL uses database.table
-  if (context.schema && context.schema !== 'public' && context.schema !== 'main') {
+  // PostgreSQL uses schema.table, MySQL uses database.table, MSSQL uses schema.table (default 'dbo')
+  if (
+    context.schema &&
+    context.schema !== 'public' &&
+    context.schema !== 'main' &&
+    context.schema !== 'dbo'
+  ) {
     return `${quoteIdentifier(context.schema, dialect)}.${table}`
   }
   return table
@@ -240,7 +248,14 @@ export function buildPreviewSql(
   // Replace placeholders with actual values (for preview only)
   let preview = sql
   params.forEach((param, index) => {
-    const placeholder = dbType === 'postgresql' ? `$${index + 1}` : '?'
+    let placeholder: string
+    if (dbType === 'postgresql') {
+      placeholder = `$${index + 1}`
+    } else if (dbType === 'mssql') {
+      placeholder = `@p${index + 1}`
+    } else {
+      placeholder = '?'
+    }
 
     let displayValue: string
     if (param === null) {

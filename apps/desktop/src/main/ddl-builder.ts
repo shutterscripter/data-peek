@@ -15,6 +15,7 @@ import type {
   ParameterizedQuery,
   DatabaseType
 } from '@data-peek/shared'
+import { quoteIdentifier as quoteIdentifierUtil } from './sql-utils'
 
 /**
  * SQL dialect configuration for DDL
@@ -48,6 +49,13 @@ const DIALECTS: Record<DatabaseType, DdlDialect> = {
     supportsIfNotExists: true,
     supportsIfExists: true,
     supportsConcurrent: false
+  },
+  mssql: {
+    identifierQuote: '[',
+    stringQuote: "'",
+    supportsIfNotExists: false,
+    supportsIfExists: true,
+    supportsConcurrent: false
   }
 }
 
@@ -55,9 +63,7 @@ const DIALECTS: Record<DatabaseType, DdlDialect> = {
  * Quote an identifier (table name, column name) for the given dialect
  */
 function quoteIdentifier(name: string, dialect: DdlDialect): string {
-  const q = dialect.identifierQuote
-  const escaped = name.replace(new RegExp(q, 'g'), q + q)
-  return `${q}${escaped}${q}`
+  return quoteIdentifierUtil(name, dialect.identifierQuote)
 }
 
 /**
@@ -74,7 +80,8 @@ function quoteString(value: string, dialect: DdlDialect): string {
  */
 function buildTableRef(schema: string, table: string, dialect: DdlDialect): string {
   const tableName = quoteIdentifier(table, dialect)
-  if (schema && schema !== 'public' && schema !== 'main') {
+  // MSSQL uses 'dbo' as default schema, PostgreSQL uses 'public', SQLite uses 'main'
+  if (schema && schema !== 'public' && schema !== 'main' && schema !== 'dbo') {
     return `${quoteIdentifier(schema, dialect)}.${tableName}`
   }
   return tableName
