@@ -6,7 +6,10 @@ import { Resend } from "resend";
 import DodoPayments from "dodopayments";
 
 const resend = new Resend(process.env.RESEND_API_KEY ?? "re_123");
-const dodo = new DodoPayments({ bearerToken: process.env.DODO_API_KEY });
+const dodo = new DodoPayments({
+  bearerToken: process.env.DODO_API_KEY,
+  webhookKey: process.env.DODO_WEBHOOK_SECRET,
+});
 
 // DodoPayments webhook event types
 type DodoEventType =
@@ -50,29 +53,6 @@ function getEventId(event: DodoWebhookPayload): string {
   const { data, type, timestamp } = event;
   // Try various ID fields, fallback to type + timestamp
   return data.payment_id || data.subscription_id || data.id || `${type}-${timestamp}`;
-}
-
-// Verify DodoPayments webhook signature
-async function verifyWebhookSignature(
-  payload: string,
-  signature: string | null
-): Promise<boolean> {
-  if (!signature || !process.env.DODO_WEBHOOK_SECRET) {
-    console.warn("Missing webhook signature or secret");
-    return false;
-  }
-
-  // DodoPayments uses HMAC-SHA256 for webhook signatures
-  const crypto = await import("crypto");
-  const expectedSignature = crypto
-    .createHmac("sha256", process.env.DODO_WEBHOOK_SECRET)
-    .update(payload)
-    .digest("hex");
-
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(expectedSignature)
-  );
 }
 
 // Send welcome email with license key
@@ -140,33 +120,63 @@ export async function POST(request: NextRequest) {
 
   try {
     const payload = await request.text();
-    const signature = request.headers.get("x-dodo-signature");
 
-    // Verify signature in production
-    if (process.env.NODE_ENV === "production") {
-      const isValid = await verifyWebhookSignature(payload, signature);
-      if (!isValid) {
-        console.error("Invalid webhook signature");
-        return NextResponse.json(
-          { error: "Invalid signature" },
-          { status: 401 }
-        );
-      }
+    // Extract Standard Webhooks headers
+    const webhookHeaders = {
+      "webhook-id": request.headers.get("webhook-id") ?? "",
+      "webhook-signature": request.headers.get("webhook-signature") ?? "",
+      "webhook-timestamp": request.headers.get("webhook-timestamp") ?? "",
+    };
+
+    let event: DodoWebhookPayload;
+
+    // Verify signature using Dodo Payments SDK (follows Standard Webhooks spec)
+    try {
+      // unwrap() verifies the signature and returns the parsed payload
+      const unwrapped = dodo.webhooks.unwrap(payload, { headers: webhookHeaders });
+      event = unwrapped as unknown as DodoWebhookPayload;
+    } catch (verifyError) {
+      console.error("Webhook signature verification failed:", verifyError);
+      return NextResponse.json(
+        { error: "Invalid signature" },
+        { status: 401 }
+      );
     }
 
-    const event = JSON.parse(payload) as DodoWebhookPayload;
+    // Use webhook-id header for idempotency (as per Standard Webhooks spec)
+    // This prevents duplicate processing due to retries
+    const webhookId = webhookHeaders["webhook-id"];
+    const eventId = webhookId || getEventId(event);
+
+    // Check if we've already processed this webhook (idempotency)
+    const existingEvent = await db.query.webhookEvents.findFirst({
+      where: eq(webhookEvents.eventId, eventId),
+    });
+
+    if (existingEvent?.processed) {
+      console.log(`Webhook already processed: ${eventId}`);
+      return NextResponse.json({ received: true });
+    }
 
     // Save webhook event to database
     const [savedEvent] = await db
       .insert(webhookEvents)
       .values({
-        eventId: getEventId(event),
+        eventId,
         eventName: event.type,
         provider: "dodo",
         payload: event,
         processed: false,
       })
+      .onConflictDoNothing() // Handle race condition with duplicate webhook delivery
       .returning();
+
+    // If no event was inserted (duplicate), return success
+    if (!savedEvent) {
+      console.log(`Duplicate webhook received: ${eventId}`);
+      return NextResponse.json({ received: true });
+    }
+
     webhookEventId = savedEvent.id;
 
     switch (event.type) {
