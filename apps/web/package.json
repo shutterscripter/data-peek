@@ -12,7 +12,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "admin:grant-license": "tsx scripts/grant-license.ts"
+    "admin:grant-license": "tsx scripts/grant-license.ts",
+    "admin:grant-educator": "tsx scripts/grant-educator-license.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.35.5",
