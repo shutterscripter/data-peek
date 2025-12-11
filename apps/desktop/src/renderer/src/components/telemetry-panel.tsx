@@ -244,8 +244,6 @@ export function TelemetryPanel({
   // Sort phases by startOffset for timeline view
   const sortedPhases = [...visiblePhases].sort((a, b) => a.startOffset - b.startOffset)
 
-  const maxDuration = Math.max(...visiblePhases.map((p) => p.durationMs), 0.001)
-
   const getDisplayValue = (phaseName: string): number => {
     if (benchmark?.phaseStats[phaseName]) {
       return benchmark.phaseStats[phaseName][selectedPercentile]
@@ -253,6 +251,13 @@ export function TelemetryPanel({
     const phase = phases.find((p) => p.name === phaseName)
     return phase?.durationMs ?? 0
   }
+
+  // Compute maxDuration from the same source as getDisplayValue to ensure
+  // bar widths never exceed 100% in benchmark mode
+  const maxDuration = Math.max(
+    ...visiblePhases.map((p) => getDisplayValue(p.name)),
+    0.001
+  )
 
   const getTotalDuration = (): number => {
     if (benchmark) {
