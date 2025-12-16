@@ -2,11 +2,12 @@ import { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { MDXRemote } from 'next-mdx-remote/rsc'
+import rehypePrettyCode from 'rehype-pretty-code'
 import { Header } from '@/components/marketing/header'
 import { Footer } from '@/components/marketing/footer'
 import { getBlogPost, getAllBlogSlugs } from '@/lib/blog'
 import { mdxComponents } from '@/components/blog/mdx-components'
-import { ArrowLeft, Calendar, Clock, Tag, User } from 'lucide-react'
+import { ArrowLeft, Calendar, Clock, User } from 'lucide-react'
 
 interface BlogPostPageProps {
   params: Promise<{ slug: string }>
@@ -128,7 +129,24 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         <article className="pb-16 md:pb-24">
           <div className="max-w-3xl mx-auto px-6">
             <div className="prose prose-invert max-w-none animate-fade-in-up delay-200">
-              <MDXRemote source={post.content} components={mdxComponents} />
+              <MDXRemote
+                source={post.content}
+                components={mdxComponents}
+                options={{
+                  mdxOptions: {
+                    rehypePlugins: [
+                      [
+                        rehypePrettyCode,
+                        {
+                          theme: 'tokyo-night',
+                          keepBackground: true,
+                          defaultLang: 'plaintext',
+                        },
+                      ],
+                    ],
+                  },
+                }}
+              />
             </div>
           </div>
         </article>
