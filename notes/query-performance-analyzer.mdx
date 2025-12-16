@@ -1,8 +1,11 @@
-# Building a Query Performance Analyzer in Electron
-
-> How we added PlanetScale-style query insights to data-peek, detecting missing indexes and N+1 patterns using PostgreSQL's EXPLAIN ANALYZE.
-
-## The Problem
+---
+title: "Building a Query Performance Analyzer in Electron"
+description: "How we added PlanetScale-style query insights to data-peek, detecting missing indexes and N+1 patterns using PostgreSQL's EXPLAIN ANALYZE."
+date: "2024-12-15"
+author: "Rohith Gilla"
+tags: ["PostgreSQL", "Performance", "Electron", "Database", "EXPLAIN"]
+published: true
+---
 
 You write a SQL query. It works. But is it *fast*? Most developers don't know until production slows to a crawl.
 
@@ -461,9 +464,9 @@ Auto-running EXPLAIN ANALYZE on every query would be slow and noisy. Let users t
 
 ### 6. Severity levels matter
 Not every sequential scan is a crisis. We use row counts to determine severity:
-- <1000 rows: ignore
+- Under 1000 rows: ignore
 - 1000-10000 rows: warning
-- >10000 rows: critical
+- Over 10000 rows: critical
 
 ## What's Next
 

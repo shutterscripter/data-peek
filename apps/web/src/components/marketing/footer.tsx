@@ -18,9 +18,9 @@ const footerLinks = {
       href: "https://docs.datapeek.dev/docs",
       external: true,
     },
-    { label: "FAQ", href: "#faq" },
-    { label: "Support", href: "mailto:gillarohith1@gmail.com", external: true },
+    { label: "Blog", href: "/blog" },
     { label: "FAQ", href: "/#faq" },
+    { label: "Support", href: "mailto:gillarohith1@gmail.com", external: true },
   ],
   Legal: [
     {
