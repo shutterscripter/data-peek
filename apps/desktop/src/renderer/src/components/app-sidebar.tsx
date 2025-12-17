@@ -4,6 +4,7 @@ import { MessageCircleQuestion, Settings2 } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 
 import { ConnectionSwitcher } from '@/components/connection-switcher'
+import { Dashboards } from '@/components/dashboard'
 import { QueryHistory } from '@/components/query-history'
 import { SavedQueries } from '@/components/saved-queries'
 import { ScheduledQueries } from '@/components/scheduled-queries'
@@ -56,6 +57,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
         {/* Scheduled Queries */}
         <ScheduledQueries />
+
+        <SidebarSeparator className="mx-3" />
+
+        {/* Dashboards */}
+        <Dashboards />
 
         {/* Secondary Navigation - Settings & Help */}
         <SidebarGroup className="mt-auto">

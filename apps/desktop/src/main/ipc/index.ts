@@ -6,6 +6,7 @@ import { registerDDLHandlers } from './ddl-handlers'
 import { registerLicenseHandlers } from './license-handlers'
 import { registerSavedQueriesHandlers } from './saved-queries-handlers'
 import { registerScheduledQueriesHandlers } from './scheduled-queries-handlers'
+import { registerDashboardHandlers } from './dashboard-handlers'
 import { registerAIHandlers } from './ai-handlers'
 import { createLogger } from '../lib/logger'
 import { registerFileHandlers } from './file-handlers'
@@ -43,6 +44,9 @@ export function registerAllHandlers(stores: IpcStores): void {
   // Scheduled queries management
   registerScheduledQueriesHandlers()
 
+  // Dashboard management
+  registerDashboardHandlers()
+
   // AI features
   registerAIHandlers()
 
@@ -62,4 +66,5 @@ export { registerDDLHandlers } from './ddl-handlers'
 export { registerLicenseHandlers } from './license-handlers'
 export { registerSavedQueriesHandlers } from './saved-queries-handlers'
 export { registerScheduledQueriesHandlers } from './scheduled-queries-handlers'
+export { registerDashboardHandlers } from './dashboard-handlers'
 export { registerAIHandlers } from './ai-handlers'

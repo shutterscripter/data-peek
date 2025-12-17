@@ -32,7 +32,15 @@ import type {
   ScheduledQuery,
   ScheduledQueryRun,
   CreateScheduledQueryInput,
-  UpdateScheduledQueryInput
+  UpdateScheduledQueryInput,
+  Dashboard,
+  Widget,
+  WidgetRunResult,
+  CreateDashboardInput,
+  UpdateDashboardInput,
+  CreateWidgetInput,
+  UpdateWidgetInput,
+  WidgetLayout
 } from '@shared/index'
 
 // Re-export AI types for renderer consumers
@@ -258,6 +266,67 @@ const api = {
       timezone?: string
     ): Promise<IpcResponse<number[]>> =>
       ipcRenderer.invoke('scheduled-queries:get-next-runs', { expression, count, timezone })
+  },
+  // Dashboard management
+  dashboards: {
+    list: (): Promise<IpcResponse<Dashboard[]>> => ipcRenderer.invoke('dashboards:list'),
+    get: (id: string): Promise<IpcResponse<Dashboard>> => ipcRenderer.invoke('dashboards:get', id),
+    create: (input: CreateDashboardInput): Promise<IpcResponse<Dashboard>> =>
+      ipcRenderer.invoke('dashboards:create', input),
+    update: (id: string, updates: UpdateDashboardInput): Promise<IpcResponse<Dashboard>> =>
+      ipcRenderer.invoke('dashboards:update', { id, updates }),
+    delete: (id: string): Promise<IpcResponse<void>> => ipcRenderer.invoke('dashboards:delete', id),
+    duplicate: (id: string): Promise<IpcResponse<Dashboard>> =>
+      ipcRenderer.invoke('dashboards:duplicate', id),
+    addWidget: (dashboardId: string, widget: CreateWidgetInput): Promise<IpcResponse<Widget>> =>
+      ipcRenderer.invoke('dashboards:add-widget', { dashboardId, widget }),
+    updateWidget: (
+      dashboardId: string,
+      widgetId: string,
+      updates: UpdateWidgetInput
+    ): Promise<IpcResponse<Widget>> =>
+      ipcRenderer.invoke('dashboards:update-widget', { dashboardId, widgetId, updates }),
+    deleteWidget: (dashboardId: string, widgetId: string): Promise<IpcResponse<void>> =>
+      ipcRenderer.invoke('dashboards:delete-widget', { dashboardId, widgetId }),
+    updateWidgetLayouts: (
+      dashboardId: string,
+      layouts: Record<string, WidgetLayout>
+    ): Promise<IpcResponse<Dashboard>> =>
+      ipcRenderer.invoke('dashboards:update-widget-layouts', { dashboardId, layouts }),
+    executeWidget: (widget: Widget): Promise<IpcResponse<WidgetRunResult>> =>
+      ipcRenderer.invoke('dashboards:execute-widget', widget),
+    executeAllWidgets: (dashboardId: string): Promise<IpcResponse<WidgetRunResult[]>> =>
+      ipcRenderer.invoke('dashboards:execute-all-widgets', dashboardId),
+    getByTag: (tag: string): Promise<IpcResponse<Dashboard[]>> =>
+      ipcRenderer.invoke('dashboards:get-by-tag', tag),
+    getAllTags: (): Promise<IpcResponse<string[]>> => ipcRenderer.invoke('dashboards:get-all-tags'),
+    updateRefreshSchedule: (
+      dashboardId: string,
+      schedule: Dashboard['refreshSchedule']
+    ): Promise<IpcResponse<Dashboard>> =>
+      ipcRenderer.invoke('dashboards:update-refresh-schedule', { dashboardId, schedule }),
+    getNextRefreshTime: (
+      schedule: NonNullable<Dashboard['refreshSchedule']>
+    ): Promise<IpcResponse<number | null>> =>
+      ipcRenderer.invoke('dashboards:get-next-refresh-time', schedule),
+    validateCron: (expression: string): Promise<IpcResponse<{ valid: boolean; error?: string }>> =>
+      ipcRenderer.invoke('dashboards:validate-cron', expression),
+    getNextRefreshTimes: (
+      expression: string,
+      count?: number,
+      timezone?: string
+    ): Promise<IpcResponse<number[]>> =>
+      ipcRenderer.invoke('dashboards:get-next-refresh-times', { expression, count, timezone }),
+    onRefreshComplete: (
+      callback: (data: { dashboardId: string; results: WidgetRunResult[] }) => void
+    ): (() => void) => {
+      const handler = (
+        _: unknown,
+        data: { dashboardId: string; results: WidgetRunResult[] }
+      ): void => callback(data)
+      ipcRenderer.on('dashboard:refresh-complete', handler)
+      return () => ipcRenderer.removeListener('dashboard:refresh-complete', handler)
+    }
   },
   // Auto-updater event listeners
   updater: {

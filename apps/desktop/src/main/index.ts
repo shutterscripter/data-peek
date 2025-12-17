@@ -16,6 +16,7 @@ import { registerAllHandlers } from './ipc'
 import { setForceQuit } from './app-state'
 import { windowManager } from './window-manager'
 import { initSchedulerService, stopAllSchedules } from './scheduler-service'
+import { initDashboardService } from './dashboard-service'
 
 // Store instances
 let store: DpStorage<{ connections: ConnectionConfig[] }>
@@ -61,6 +62,9 @@ app.whenReady().then(async () => {
 
   // Initialize scheduler service (needs connections store)
   await initSchedulerService(store)
+
+  // Initialize dashboard service (needs connections and saved queries stores)
+  await initDashboardService(store, savedQueriesStore)
 
   // Create native application menu
   createMenu()
