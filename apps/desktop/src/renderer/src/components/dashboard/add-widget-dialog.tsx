@@ -232,7 +232,7 @@ export function AddWidgetDialog({ open, onOpenChange, dashboardId }: AddWidgetDi
   }
 
   const handlePreviewQuery = async () => {
-    const sql =
+    let sql =
       sourceType === 'saved-query'
         ? savedQueries.find((q) => q.id === selectedQueryId)?.query
         : inlineSql
@@ -240,9 +240,13 @@ export function AddWidgetDialog({ open, onOpenChange, dashboardId }: AddWidgetDi
     const connection = connections.find((c) => c.id === connectionId)
     if (!sql || !connection) return
 
+    // Remove trailing semicolons and whitespace, then add LIMIT
+    sql = sql.trim().replace(/;+$/, '')
+    const previewSql = `${sql} LIMIT 100`
+
     setIsLoadingPreview(true)
     try {
-      const result = await window.api.db.query(connection, `${sql} LIMIT 100`)
+      const result = await window.api.db.query(connection, previewSql)
       if (result.success && result.data) {
         const data = result.data as { rows?: Record<string, unknown>[] }
         setPreviewData(data.rows || null)
