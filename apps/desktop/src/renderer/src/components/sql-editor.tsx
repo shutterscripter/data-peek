@@ -5,8 +5,8 @@ import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
 import { formatSQL } from '@/lib/sql-formatter'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/components/theme-provider'
+import type { SchemaInfo, Snippet, TableInfo } from '@data-peek/shared'
 import { SQL_KEYWORDS } from '@/constants/sql-keywords'
-import type { SchemaInfo, TableInfo } from '@data-peek/shared'
 
 // Configure Monaco workers for Vite + Electron (avoids CSP issues)
 self.MonacoEnvironment = {
@@ -126,10 +126,16 @@ const SQL_TYPES = [
 // This prevents duplicate suggestions when multiple editor instances exist
 let globalCompletionProvider: monaco.IDisposable | null = null
 let currentSchemas: SchemaInfo[] = []
+let currentSnippets: Snippet[] = []
 
 // Update schemas for the global completion provider
 const updateCompletionSchemas = (schemas: SchemaInfo[]) => {
   currentSchemas = schemas
+}
+
+// Update snippets for the global completion provider
+const updateCompletionSnippets = (snippets: Snippet[]) => {
+  currentSnippets = snippets
 }
 
 // SQL reserved keywords that should not be treated as table aliases
@@ -380,6 +386,26 @@ const ensureCompletionProvider = (monacoInstance: Monaco): void => {
         })
       })
 
+      // Add snippets
+      currentSnippets.forEach((snippet) => {
+        const label = snippet.triggerPrefix
+          ? `${snippet.triggerPrefix} - ${snippet.name}`
+          : snippet.name
+        suggestions.push({
+          label,
+          kind: monacoInstance.languages.CompletionItemKind.Snippet,
+          insertText: snippet.template,
+          insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+          range,
+          detail: `Snippet: ${snippet.category}`,
+          documentation: snippet.description,
+          sortText: '4' + (snippet.triggerPrefix || snippet.name),
+          filterText: snippet.triggerPrefix
+            ? `${snippet.triggerPrefix} ${snippet.name}`
+            : snippet.name
+        })
+      })
+
       // Add schema names
       currentSchemas.forEach((schema) => {
         suggestions.push({
@@ -437,6 +463,8 @@ export interface SQLEditorProps {
   compact?: boolean
   /** Database schemas for autocomplete (tables, columns) */
   schemas?: SchemaInfo[]
+  /** SQL snippets for autocomplete */
+  snippets?: Snippet[]
 }
 
 // Custom dark theme inspired by the app's aesthetic
@@ -527,7 +555,8 @@ export function SQLEditor({
   className,
   placeholder = 'SELECT * FROM your_table LIMIT 100;',
   compact = false,
-  schemas = []
+  schemas = [],
+  snippets = []
 }: SQLEditorProps) {
   const { theme } = useTheme()
   const editorRef = React.useRef<EditorType | null>(null)
@@ -563,6 +592,7 @@ export function SQLEditor({
 
     // Register SQL autocomplete provider (singleton - only registers once globally)
     updateCompletionSchemas(schemas)
+    updateCompletionSnippets(snippets)
     ensureCompletionProvider(monaco)
 
     // Set the theme based on current app theme
@@ -648,6 +678,11 @@ export function SQLEditor({
   React.useEffect(() => {
     updateCompletionSchemas(schemas)
   }, [schemas])
+
+  // Update completion snippets when they change
+  React.useEffect(() => {
+    updateCompletionSnippets(snippets)
+  }, [snippets])
 
   const handleChange = (newValue: string | undefined) => {
     onChange?.(newValue ?? '')
