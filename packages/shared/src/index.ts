@@ -389,6 +389,25 @@ export interface SQLiteConnectionOptions {
 }
 
 /**
+ * SSL/TLS connection options for PostgreSQL and MySQL
+ * Allows configuration of certificate verification behavior
+ */
+export interface SSLConnectionOptions {
+  /**
+   * If true, the server certificate is verified against the list of supplied CAs.
+   * Set to false to allow connections to servers with self-signed certificates
+   * or when connecting through VPN to cloud databases (like AWS RDS).
+   * Default: true
+   */
+  rejectUnauthorized?: boolean;
+  /**
+   * Optional path to CA certificate file (PEM format)
+   * Use this when connecting to a server with a certificate signed by a private CA
+   */
+  ca?: string;
+}
+
+/**
  * MSSQL-specific connection options
  */
 export interface MSSQLConnectionOptions {
@@ -423,6 +442,8 @@ export interface ConnectionConfig {
   dbType: DatabaseType;
   dstPort: number;
   sshConfig?: SSHConfig;
+  /** SSL/TLS options for PostgreSQL and MySQL (only used when ssl is true) */
+  sslOptions?: SSLConnectionOptions;
   /** MSSQL-specific connection options (only used when dbType is 'mssql') */
   mssqlOptions?: MSSQLConnectionOptions;
   /** SQLite-specific connection options (only used when dbType is 'sqlite') */
@@ -1253,6 +1274,31 @@ export interface TelemetryStats {
   p95: number;
   p99: number;
   stdDev: number;
+}
+
+/**
+ * Calculate percentile from a sorted array of numbers
+ * @param sorted - Array of numbers sorted in ascending order
+ * @param p - Percentile to calculate (0-100)
+ */
+export function calcPercentile(sorted: number[], p: number): number {
+  if (sorted.length === 0) return 0;
+  if (sorted.length === 1) return sorted[0];
+  const idx = Math.ceil((p / 100) * sorted.length) - 1;
+  return sorted[Math.max(0, Math.min(idx, sorted.length - 1))];
+}
+
+/**
+ * Calculate standard deviation of an array of numbers
+ * @param values - Array of numbers
+ * @param mean - Pre-calculated mean of the values
+ */
+export function calcStdDev(values: number[], mean: number): number {
+  if (values.length === 0) return 0;
+  const variance =
+    values.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) /
+    values.length;
+  return Math.sqrt(variance);
 }
 
 /**
