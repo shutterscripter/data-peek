@@ -209,6 +209,19 @@ pnpm build
  </picture>
 </a>
 
+## Sponsors
+
+<p align="center">
+  <a href="https://www.tembo.io/?utm_source=github&utm_medium=readme&utm_campaign=data_peek_sponsorship#gh-light-mode-only" target="_blank">
+    <img src="assets/tembo-dark.png#gh-light-mode-only" alt="Tembo - Goodbye Database Sprawl" width="400"/>
+  </a>
+  <a href="https://www.tembo.io/?utm_source=github&utm_medium=readme&utm_campaign=data_peek_sponsorship#gh-dark-mode-only" target="_blank">
+    <img src="assets/tembo-light.png#gh-dark-mode-only" alt="Tembo - Goodbye Database Sprawl" width="400"/>
+  </a>
+  <br/>
+  <strong><a href="https://www.tembo.io/?utm_source=github&utm_medium=readme&utm_campaign=data_peek_sponsorship" target="_blank">Tembo — Goodbye Database Sprawl</a></strong>
+</p>
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
@@ -224,3 +237,9 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 - [GitHub Issues](https://github.com/Rohithgilla12/data-peek/issues) - Bug reports and feature requests
 - [GitHub Sponsors](https://github.com/sponsors/Rohithgilla12) - Support development
 - Twitter/X: [@gillarohith](https://x.com/gillarohith)
+
+<br />
+<br />
+<a href="https://vercel.com/oss">
+  <img alt="Vercel OSS Program" src="https://vercel.com/oss/program-badge.svg" />
+</a>
